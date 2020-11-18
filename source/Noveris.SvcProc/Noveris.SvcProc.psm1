@@ -1,16 +1,13 @@
 <#
 #>
 
+#Requires -Modules @{"ModuleName"="Noveris.Logger";"RequiredVersion"="0.6.1"}
+
 ########
 # Global settings
 $ErrorActionPreference = "Stop"
 $InformationPreference = "Continue"
 Set-StrictMode -Version 2
-
-Import-Module ([System.IO.Path]::Combine($PSScriptRoot, "Noveris.ModuleMgmt.psm1"))
-
-Remove-Module Noveris.Logger -EA SilentlyContinue
-Import-Module -Name Noveris.Logger -RequiredVersion (Install-PSModuleWithSpec -Name Noveris.Logger -Major 0 -Minor 6)
 
 <#
 #>
@@ -30,9 +27,19 @@ Function Invoke-ServiceRun
         [ValidateSet("Start", "Finish")]
         [string]$WaitFrom = "Start",
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
         [ValidateNotNull()]
-        [int]$WaitSeconds
+        [int]$WaitSeconds = 0,
+
+        [Parameter(Mandatory=$false)]
+        [ValidateNotNullOrEmpty()]
+        [string]$LogPath,
+
+        [Parameter(Mandatory=$false)]
+        [int]$RotateSizeKB = 0,
+
+        [Parameter(Mandatory=$false)]
+        [int]$PreserveCount = 5
     )
 
     process
@@ -45,20 +52,48 @@ Function Invoke-ServiceRun
             $infinite = $true
         }
 
+        # Set up log rotation arguments
+        $rotateArgs = $null
+        if (![string]::IsNullOrEmpty($LogPath))
+        {
+            $rotateArgs = @{
+                LogPath = $LogPath
+                PreserveCount = $PreserveCount
+                RotateSizeKB = $RotateSizeKB
+            }
+        }
+
         while ($infinite -or $count -gt 0)
         {
             # Capture start of script run
             $start = [DateTime]::Now
             Write-Verbose ("Start Time: " + $start.ToString("yyyyMMdd HH:mm:ss"))
 
+            # Rotate log
+            if ($null -ne $rotateArgs)
+            {
+                Reset-LogFileState @rotateArgs
+            }
+
             # Run script block and redirect output as string
             try {
                 Write-Verbose "Running script block"
-                & $ScriptBlock *>&1 |
-                    Format-RecordAsString -DisplaySummary |
-                    Out-String -Stream
-                if (!$?) {
-                    Write-Information "Script returned error"
+                if ([string]::IsNullOrEmpty($LogPath))
+                {
+                    & $ScriptBlock *>&1 |
+                        Format-RecordAsString -DisplaySummary |
+                        Out-String -Stream
+                    if (!$?) {
+                        Write-Information "Script returned error"
+                    }
+                } else {
+                    & $ScriptBlock *>&1 |
+                        Format-RecordAsString -DisplaySummary |
+                        Out-String -Stream |
+                        Tee-Object -Append -FilePath $LogPath
+                    if (!$?) {
+                        Write-Information "Script returned error"
+                    }
                 }
             } catch {
                 Write-Information "Script threw error: $_"
