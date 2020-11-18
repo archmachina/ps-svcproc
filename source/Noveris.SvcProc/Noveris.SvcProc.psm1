@@ -14,7 +14,7 @@ Import-Module -Name Noveris.Logger -RequiredVersion (Install-PSModuleWithSpec -N
 
 <#
 #>
-Function Invoke-SvcProc
+Function Invoke-ServiceRun
 {
     [CmdletBinding()]
     param(
