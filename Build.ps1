@@ -41,13 +41,9 @@ Invoke-BuildStage -Name "Build" -Filters $Stages -Script {
         __FULLVERSION__ = $version.Full
     }
 
-    # Copy modulemgmt to release tools to include in module
-    Write-Information "Copy ModuleMgmt to source directory"
-    Copy-Item ./Noveris.ModuleMgmt/source/Noveris.ModuleMgmt/Noveris.ModuleMgmt.psm1 ./source/Noveris.SvcProc/
-
-    # Attempt to import the module
-    Write-Information "Attempting to import module"
-    Import-Module ./source/Noveris.SvcProc -EA Stop
+    # Test the module manifest
+    Write-Information "Testing module manifest"
+    Test-ModuleManifest source/Noveris.SvcProc/Noveris.SvcProc.psd1
 }
 
 Invoke-BuildStage -Name "Publish" -Filters $Stages -Script {
