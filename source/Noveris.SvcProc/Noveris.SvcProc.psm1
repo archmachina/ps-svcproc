@@ -32,8 +32,8 @@ Function Invoke-ServiceRun
         [int]$WaitSeconds = 0,
 
         [Parameter(Mandatory=$false)]
-        [ValidateNotNullOrEmpty()]
-        [string]$LogPath,
+        [ValidateNotNull()]
+        [string]$LogPath = "",
 
         [Parameter(Mandatory=$false)]
         [int]$RotateSizeKB = 0,
