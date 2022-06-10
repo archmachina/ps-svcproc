@@ -23,7 +23,7 @@ $version
 Invoke-CIProfile -Name $Profile -Steps @{
 
     lint = @{
-        Script = {
+        Steps = {
             Use-PowershellGallery
             Install-Module PSScriptAnalyzer -Scope CurrentUser
             Import-Module PSScriptAnalyzer
@@ -37,7 +37,7 @@ Invoke-CIProfile -Name $Profile -Steps @{
     }
 
     build = @{
-        Script = {
+        Steps = {
             # Template PowerShell module definition
             Write-Information "Templating SvcProc.psd1"
             Format-TemplateFile -Template source/SvcProc.psd1.tpl -Target source/SvcProc/SvcProc.psd1 -Content @{
@@ -63,16 +63,15 @@ Invoke-CIProfile -Name $Profile -Steps @{
     }
 
     pr = @{
-        Dependencies = $("build")
+        Steps = "build"
     }
 
     latest = @{
-        Dependencies = $("build")
+        Steps = "build"
     }
 
     release = @{
-        Dependencies = $("build")
-        Script = {
+        Steps = "build", {
             $owner = "archmachina"
             $repo = "ps-svcproc"
 
