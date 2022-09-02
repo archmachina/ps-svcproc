@@ -254,14 +254,26 @@ Function Invoke-ServiceRun
                 Write-Verbose "Running script block"
                 if ([string]::IsNullOrEmpty($LogPath))
                 {
-                    & $ScriptBlock *>&1 |
+                    & {
+                        try {
+                            & $ScriptBlock *>&1
+                        } catch {
+                            $_
+                        }
+                    } |
                         Format-RecordAsString -DisplaySummary |
                         Out-String -Stream
                     if (!$?) {
                         Write-Information "Script returned error"
                     }
                 } else {
-                    & $ScriptBlock *>&1 |
+                    & {
+                        try {
+                            & $ScriptBlock *>&1
+                        } catch {
+                            $_
+                        }
+                    } |
                         Format-RecordAsString -DisplaySummary |
                         Out-String -Stream |
                         Tee-Object -Append -FilePath $LogPath
