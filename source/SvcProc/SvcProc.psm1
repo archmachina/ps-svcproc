@@ -19,8 +19,8 @@ Function Format-RecordAsString
         [Parameter(Mandatory=$false)]
         [switch]$DisplaySummary = $false,
 
-        [Parameter(Mandatory=$false)]
-        [switch]$RethrowError = $false
+        [Parameter(Mandatory=$true)]
+        [bool]$StopOnError
     )
 
     begin
@@ -49,9 +49,9 @@ Function Format-RecordAsString
                 ("{0} (ERROR): {1}" -f $timestamp, $_.ToString())
             }
 
-            if ($RethrowError)
+            if ($StopOnError)
             {
-                throw $Input
+                Write-Error "Error encountered and StopOnError is true. Stopping."
             }
         }
         elseif ([System.Management.Automation.DebugRecord].IsAssignableFrom($_.GetType()))
@@ -213,7 +213,10 @@ Function Invoke-ServiceRun
         [int]$RotateSizeKB = 0,
 
         [Parameter(Mandatory=$false)]
-        [int]$PreserveCount = 5
+        [int]$PreserveCount = 5,
+
+        [Parameter(Mandatory=$false)]
+        [bool]$StopOnError = $false
     )
 
     process
@@ -250,39 +253,35 @@ Function Invoke-ServiceRun
             }
 
             # Run script block and redirect output as string
-            try {
-                Write-Verbose "Running script block"
-                if ([string]::IsNullOrEmpty($LogPath))
-                {
-                    & {
-                        try {
-                            & $ScriptBlock *>&1
-                        } catch {
-                            $_
-                        }
-                    } |
-                        Format-RecordAsString -DisplaySummary |
-                        Out-String -Stream
-                    if (!$?) {
-                        Write-Information "Script returned error"
+            Write-Verbose "Running script block"
+            if ([string]::IsNullOrEmpty($LogPath))
+            {
+                & {
+                    try {
+                        & $ScriptBlock *>&1
+                    } catch {
+                        $_
                     }
-                } else {
-                    & {
-                        try {
-                            & $ScriptBlock *>&1
-                        } catch {
-                            $_
-                        }
-                    } |
-                        Format-RecordAsString -DisplaySummary |
-                        Out-String -Stream |
-                        Tee-Object -Append -FilePath $LogPath
-                    if (!$?) {
-                        Write-Information "Script returned error"
-                    }
+                } |
+                    Format-RecordAsString -DisplaySummary -StopOnError $StopOnError |
+                    Out-String -Stream
+                if (!$?) {
+                    Write-Information "Script returned error"
                 }
-            } catch {
-                Write-Information "Script threw error: $_"
+            } else {
+                & {
+                    try {
+                        & $ScriptBlock *>&1
+                    } catch {
+                        $_
+                    }
+                } |
+                    Format-RecordAsString -DisplaySummary -StopOnError $StopOnError |
+                    Out-String -Stream |
+                    Tee-Object -Append -FilePath $LogPath
+                if (!$?) {
+                    Write-Information "Script returned error"
+                }
             }
 
             # Capture finish of script run
